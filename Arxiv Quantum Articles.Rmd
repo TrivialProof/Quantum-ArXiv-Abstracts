@@ -1,0 +1,288 @@
+---
+title: "Text Analysis of ArXiv Quantum Articles"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  html_notebook: default
+---
+
+This data was taken from [Kaggle](https://www.kaggle.com/louise2001/quantum-physics-articles-on-arxiv-1994-to-2009) just for the craic. I'm doing this mostly just for practice as its been a while since I used R! Since quantum physics is hard, maybe I can just study the words used in the abstracts? 
+
+## Import and Explore
+
+```{r}
+setwd("~/Documents/Data Analytics/Projects/Arxiv Quantum Articles")
+arxiv_old <- read.csv("ArXiv_old.csv",header = TRUE)
+arxiv1 <- read.csv("ArXiv.csv",header = TRUE)
+arxiv2 <- read.csv("ArXiv 2.csv",header = TRUE)
+```
+Merge the datasets:
+```{r}
+arxiv <- rbind(arxiv_old, arxiv1, arxiv2)
+str(arxiv)
+```
+
+173500 rows and 6 variables. For this analysis, we'll focus mostly on the abstract, trying to identify recurrence of key terms and phrases over time. So lets take a random abstract and see what we're working with.
+```{r}
+arxiv[sample(nrow(arxiv), 1),2]
+```
+
+Lets remove the \n new line command. We should import stringr at this point.
+
+```{r include=FALSE}
+library(stringr)
+```
+
+```{r include=FALSE}
+arxiv$abstract <- str_replace_all(arxiv$abstract, "[\n]" , " ")
+```
+
+Now check out a random abstract:
+```{r}
+arxiv[sample(nrow(arxiv), 1),2]
+```
+
+Cool. Note the presence of Latex code in the abstracts, as expected. Ok, lets start exploring the abstracts. I'm going to pretty much follow [this tutorial](https://www.red-gate.com/simple-talk/sql/bi/text-mining-and-sentiment-analysis-with-r/) and some of the tips [here](https://rstudio-pubs-static.s3.amazonaws.com/132792_864e3813b0ec47cb95c7e1e2e2ad83e7.html). Start by installing the recommended packages.
+
+```{r include=FALSE}
+# Install
+#install.packages("tm")  # for text mining
+#install.packages("SnowballC") # for text stemming
+#install.packages("wordcloud") # word-cloud generator 
+#install.packages("RColorBrewer") # color palettes
+#install.packages("syuzhet") # for sentiment analysis
+# Load
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+library("syuzhet")
+library("ggplot2")
+```
+
+Read in the corpus.
+
+```{r}
+corp <- Corpus(VectorSource(arxiv$abstract))
+```
+
+Next we normalize the texts in the reviews using a series of pre-processing steps: 1. Switch to lower case 2. Remove numbers 3. Remove punctuation marks and stopwords 4. Remove extra whitespaces. Stopwords are just the words that don't really add much information, such as:
+
+```{r}
+sample(stopwords("english"),10)
+```
+
+Now perform the basic operations on the corpus.
+
+```{r include=FALSE}
+corp = tm_map(corp, content_transformer(tolower))
+corp = tm_map(corp, removeNumbers)
+corp = tm_map(corp, removePunctuation)
+corp = tm_map(corp, removeWords, c("the", "and", stopwords("english")))
+corp = tm_map(corp, stripWhitespace)
+```
+
+To analyze the textual data, we use a Document-Term Matrix (DTM) representation: documents as the rows, terms/words as the columns, frequency of the term in the document as the entries.
+
+```{r}
+dtm <- DocumentTermMatrix(corp)
+dtm
+```
+
+We can reduce the sparsity (reduce the unique terms) and have a quick look at the matrix via
+
+```{r}
+dtm_sparse = removeSparseTerms(dtm, 0.99)
+inspect(dtm_sparse[400:405,500:505])
+```
+
+A simple word cloud can be done now.
+
+```{r}
+findFreqTerms(dtm_sparse, 100)[1:10]
+```
+
+```{r}
+freq = data.frame(sort(colSums(as.matrix(dtm_sparse)), decreasing=TRUE))
+wordcloud(rownames(freq), freq[,1], max.words=50, colors=brewer.pal(1, "Dark2"))
+```
+
+In hindsight, it's probably a prudent idea to remove the word 'quantum', 'can' and 'two' and go again!
+
+```{r warning=FALSE}
+corp = tm_map(corp, removeWords, c("quantum","can","two","also","one"))
+dtm <- DocumentTermMatrix(corp)
+dtm_sparse = removeSparseTerms(dtm, 0.99)
+freq = data.frame(sort(colSums(as.matrix(dtm_sparse)), decreasing=TRUE))
+wordcloud(rownames(freq), freq[,1], max.words=50, colors=brewer.pal(1, "Dark2"))
+```
+
+We can compare this to a measure called the 'tf–idf' (term frequency–inverse document frequency) instead of the frequencies of the term as entries in each abstract. tf-idf measures the relative importance of a word to the abstract. More on that [here](https://en.wikipedia.org/wiki/Tf%E2%80%93idf).
+
+```{r}
+corp_tfidf <- DocumentTermMatrix(corp, control = list(weighting = weightTfIdf))
+corp_sparse_tfidf = removeSparseTerms(corp_tfidf, 0.99)
+corp_sparse_tfidf
+```
+
+```{r}
+inspect(corp_sparse_tfidf[1,1:20])
+```
+
+Lets see now how the new word document compares.
+
+```{r warning=FALSE}
+freq = data.frame(sort(colSums(as.matrix(corp_sparse_tfidf)), decreasing=TRUE))
+wordcloud(rownames(freq), freq[,1], max.words=100, colors=brewer.pal(1, "Dark2"))
+```
+
+## Correlations
+```{r}
+# Display the top 10 most frequent words
+colnames(freq) <- "Count"
+head(freq)
+```
+```{r}
+# Barplot the most frequent words
+barplot(freq[1:20,], las = 2, names.arg = rownames(freq)[1:20],
+        col ="lightgreen", main ="Top 8 most frequent words",
+        ylab = "Word frequencies")
+```
+
+I don't see any great surprises in there. You could probably guess most of them before hand having read a random selection of abstracts! Then again, I guess that's the idea. Lets go a bit deeper and have a look at word associations. We'll take the top 10 and set a correlation limit of 0.2 to begin with (quite low, I know).
+
+```{r}
+# Find associations 
+findAssocs(corp_sparse_tfidf, terms = rownames(freq)[1:10], corlimit = 0.2)			
+```
+
+So, for example, the word 'states' appears with the word 'entangled' 25% of the times it appears in an extract. Similarly, when 'field' is mentioned, 'megnetic' is right there 32% of the time, etc. It might be interesting to take the top 20 terms, and calculate a correlation matrix for those terms. We can narrow our focus down to 20 most used terms and see how they're correlated.
+
+```{r}
+# library(chinese.misc)
+library(chinese.misc)
+cors <- word_cor(corp_sparse_tfidf, rownames(freq)[1:10], type = "dtm", method = "pearson", p = NULL, min = NULL)
+cors$pMatrix # Pearson correlations
+```
+
+```{r}
+# Replace all NA with 1 (each word has a correlation of 1 with itself, by definition)
+cors$pMatrix[is.na(cors$pMatrix)] <- 1
+cors$pMatrix
+```
+
+Should be able to plot this now.
+```{r}
+library(ggcorrplot)
+ggcorrplot(cors$pMatrix, method = "circle")
+```
+
+Or an alternative (better looking) version:
+```{r}
+ggcorrplot(cors$pMatrix, hc.order = TRUE, type = "lower",
+   lab = TRUE)
+```
+
+## Change over Time
+
+Lets see how abstracts changed over time. We'll focus on years. First, we need to make sure we can extract years.
+
+```{r}
+years <- substring(arxiv$created,1,4)
+unique(years)
+table(years)
+```
+
+It will make things easier to add a new column for the year.
+
+```{r}
+arxiv$year <- years
+```
+
+Lets create a dataframe with a column for each of the top 20 words, as determined above.
+
+```{r}
+year_frame <- data.frame(matrix(ncol = 20, nrow = 0))
+colnames(year_frame) <- rownames(freq)[1:20]
+```
+
+There might be better ways of doing this, but lets loop through each year and see what frequency is word is. Set up a list first so we can keep track:
+
+```{r}
+key_list <- vector(mode="list", length=20)
+
+names(key_list) <- colnames(year_frame)
+j <- 1
+for (i in colnames(year_frame)) {
+  key_list[[i]] <- j
+  j <- j+1
+}
+
+x <- 1
+```
+
+Time to iterate now and fill out the data frame.
+
+```{r include=FALSE}
+for (i in unique(years)) {
+  
+  # Create a blank vector to hold the results in
+  dat <- replicate(20,0)
+  
+  # Go through the same steps as above
+  sub <- subset(arxiv, year==i,select=abstract)
+  corp_sub <- Corpus(VectorSource(sub$abstract))
+
+  corp_sub = tm_map(corp_sub, content_transformer(tolower))
+  corp_sub = tm_map(corp_sub, removeNumbers)
+  corp_sub = tm_map(corp_sub, removePunctuation)
+  corp_sub = tm_map(corp_sub,removeWords,c("the","and","quantum","can","two","also","one",stopwords("english")))
+  corp_sub = tm_map(corp_sub, stripWhitespace)
+
+  dtm_sub <- DocumentTermMatrix(corp_sub,control = list(weighting = weightTfIdf))
+  
+  dtm_sparse_sub = removeSparseTerms(dtm_sub, 0.99)
+  
+  sub_freq = data.frame(sort(colSums(as.matrix(dtm_sparse_sub)), decreasing=TRUE))
+  
+  # Loop through the words
+  for (j in colnames(year_frame)) {
+    # If the words are in the list of frequent words for this year, then save the frequency 'score'
+    if (j %in% row.names(sub_freq)) {
+      score <- sub_freq[row.names(sub_freq)==j,]
+      dat[as.numeric(unname(key_list[key_list = j]))] <- score
+    } 
+  }
+  
+  # Append the list of scores to the blank data frame
+  year_frame[x,] <- dat 
+  # Iterate and repeat!
+  x <- x+1
+}
+```
+
+```{r}
+# Rearrange by year and have a peek
+rownames(year_frame) <- unique(years)
+year_frame <- year_frame[ order(row.names(year_frame)), ]
+head(year_frame)
+```
+
+I need to reshape the dataframe first, before I plot.
+
+```{r}
+library(reshape2)
+dat <- year_frame
+dat$years <- as.numeric(row.names(year_frame))
+dat <- melt(dat,id.vars = c("years"),measure.vars = colnames(year_frame))
+
+# Plot!
+p <- ggplot(dat, aes(x = years, y = value, color = variable)) + geom_line()
+p
+```
+
+Looks like there was a steady increase over time, except between 2007 and 2010 where almost all terms rose in usage dramatically. The dataset concluded in 2019, hence the drop at the end. Research didn't just stop, I'm assuming!
+
+I think I've probably squeezed the life out of this one for now.
+
