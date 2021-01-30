@@ -1,10 +1,7 @@
 ---
 title: "Text Analysis of ArXiv Quantum Articles"
 output:
-  html_document:
-    df_print: paged
-  pdf_document: default
-  html_notebook: default
+  github_document
 ---
 
 This data was taken from [Kaggle](https://www.kaggle.com/louise2001/quantum-physics-articles-on-arxiv-1994-to-2009) just for the craic. I'm doing this mostly just for practice as its been a while since I used R! Since quantum physics is hard, maybe I can just study the words used in the abstracts? 

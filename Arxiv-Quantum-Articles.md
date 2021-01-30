@@ -10,7 +10,7 @@ study the words used in the abstracts?
 ## Import and Explore
 
 ``` r
-setwd("~/Documents/GitHub/ArXiv/ArXiv-Quantum")
+setwd("~/Documents/Data Analytics/Projects/Arxiv Quantum Articles")
 arxiv_old <- read.csv("ArXiv_old.csv",header = TRUE)
 arxiv1 <- read.csv("ArXiv.csv",header = TRUE)
 arxiv2 <- read.csv("ArXiv 2.csv",header = TRUE)
@@ -40,7 +40,7 @@ with.
 arxiv[sample(nrow(arxiv), 1),2]
 ```
 
-    ## [1] "It is proven that none of the bands in the quasi-energy spectrum of the\nQuantum Kicked Rotor is flat at any primitive resonance of any order.\nPerturbative estimates of bandwidths at small kick strength are established for\nthe case of primitive resonances of prime order. Different bands scale with\ndifferent powers of the kick strength, due to degeneracies in the spectrum of\nthe free rotor."
+    ## [1] "We study the performance of a partially correlated amplitude damping channel\nacting on two qubits. We derive lower bounds for the single-shot classical\ncapacity by studying two kinds of quantum ensembles, one which allows to\nmaximize the Holevo quantity for the memoryless channel and the other allowing\nthe same task but for the full-memory channel. In these two cases, we also show\nthe amount of entanglement which is involved in achieving the maximum of the\nHolevo quantity. For the single-shot quantum capacity we discuss both a lower\nand an upper bound, achieving a good estimate for high values of the channel\ntransmissivity. We finally compute the entanglement-assisted classical channel\ncapacity."
 
 Lets remove the new line command. We should import stringr at this
 point.
@@ -51,7 +51,7 @@ Now check out a random abstract:
 arxiv[sample(nrow(arxiv), 1),2]
 ```
 
-    ## [1] "The behavior of quantum speed limit time (QSLT) for a single free spin $-1/2$ particle described by Gaussian wavepackets in the framework of relativity under dephasing noise is investigated. The dephasing noise acts only on the spin degrees of freedom of the spin$-1/2$ particle. In particular, the effects of initial time parameter, rapidity, average momentum and the size of the wavepackets in the presence of the dephasing noise on the dynamics of evolution process are studied. In general, the effects of relativity monotonically decrease the QSLT in time. In the range of large values of average momentum, critical values of both the rapidity and the size of the wavepackets exist at which the QSLT has its minimum value. In the range of small values of the average momentum, the QSLT monotonically decreases with both rapidity and the size of the wavepackets. The decrease of QSLT in a particular range of rapidity and with other relative parameters may be of great interest in employing fast quantum communication and quantum computation."
+    ## [1] "We demonstrate the use of electrically contacted vapor cells to switch the transmission of a probe laser. The excitation scheme makes use of electromagnetically induced transparency involving a Rydberg state. The cell fabrication technique involves thinfilm based electric feedthroughs which are well suited for scaling this concept to many addressable pixels like in flat panel displays."
 
 Cool. Note the presence of Latex code in the abstracts, as expected. Ok,
 lets start exploring the abstracts. I’m going to pretty much follow
@@ -77,8 +77,8 @@ such as:
 sample(stopwords("english"),10)
 ```
 
-    ##  [1] "it's"    "where"   "he'd"    "shan't"  "this"    "there's" "ours"   
-    ##  [8] "other"   "mustn't" "should"
+    ##  [1] "of"     "an"     "nor"    "theirs" "such"   "below"  "than"   "when's"
+    ##  [9] "only"   "which"
 
 Now perform the basic operations on the corpus.
 
@@ -466,7 +466,7 @@ p
 
 ![](Arxiv-Quantum-Articles_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
 
-Looks like there was a steady increase over time, except between 2008
+Looks like there was a steady increase over time, except between 2007
 and 2010 where almost all terms rose in usage dramatically. The dataset
 concluded in 2019, hence the drop at the end. Research didn’t just stop,
 I’m assuming!
